@@ -4,7 +4,7 @@ name: hub-mirror
 # 当新建或者修改 issues 时，触发当前 workflow
 on:
   issues:
-    types: [opened, edited]
+    types: [ opened, edited ]
 
 # 需要执行的任务列表
 jobs:
@@ -58,7 +58,7 @@ jobs:
       # 5. 当以上步骤成功时，为 issues 添加 success 标签
       - name: Success issues
         if: ${{ success() }}
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         with:
           script: |
             github.rest.issues.addLabels({
@@ -67,10 +67,22 @@ jobs:
               repo: context.repo.repo,
               labels: ['success']
             })
+            const output = require('fs').readFileSync('output.sh', 'utf8')
+            github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'callback.yml',
+              ref: 'main',
+              inputs: {
+                success: true,
+                output: output,
+                input: '${{ github.event.issue.body }}'
+              }
+            })
       # 6. 当以上步骤失败时，为 issues 添加 failure 标签，并为其添加失败原因评论
       - name: Failure issues
         if: ${{ failure() }}
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         with:
           script: |
             github.rest.issues.addLabels({
@@ -84,4 +96,15 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: "[构建失败，点击查看](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            })
+            github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'callback.yml',
+              ref: 'main',
+              inputs: {
+                success: false,
+                output: '<a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">构建失败，点击查看</a>',
+                input: '${{ github.event.issue.body }}'
+              }
             })
