@@ -74,7 +74,8 @@ jobs:
             const output = require('fs').readFileSync('output.sh', 'utf8')
             github.request('POST ${{env.callbackUrl}}', {
               headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Token': ${{ secrets.CALLBACK_TOKEN }}
               },
               body: JSON.stringify({
                 success: true,
@@ -102,7 +103,8 @@ jobs:
             })
             github.request('POST ${{env.callbackUrl}}', {
               headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Token': ${{ secrets.CALLBACK_TOKEN }}
               },
               body: JSON.stringify({
                 success: false,
