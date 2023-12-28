@@ -27,7 +27,11 @@ jobs:
       # 3. 运行 go 代码
       - name: Run code
         run: go run main.go --username=${{ secrets.DOCKER_USERNAME }} --password=${{ secrets.DOCKER_TOKEN }} --repository=${{ secrets.DOCKER_REPOSITORY }} --content='${{ github.event.issue.body }}' --maxContent=11 --outputPath=output.sh
-      # 4. 当成功输出 output.sh 文件时，为 issues 添加评论
+      # 4. 提取callbackUrl环境变量中
+      - name: Extract callbackUrl
+        run: |
+          echo "callbackUrl=$(echo '${{ github.event.issue.body }}' | jq -r '.callbackUrl')" >> $GITHUB_ENV
+      # 5. 当成功输出 output.sh 文件时，为 issues 添加评论
       - name: Add comment
         if: ${{ hashFiles('output.sh') }}
         uses: actions/github-script@v5
@@ -55,10 +59,10 @@ jobs:
               repo: context.repo.repo,
               body: body
             })
-      # 5. 当以上步骤成功时，为 issues 添加 success 标签
+      # 6. 当以上步骤成功时，为 issues 添加 success 标签
       - name: Success issues
         if: ${{ success() }}
-        uses: actions/github-script@v6
+        uses: actions/github-script@v5
         with:
           script: |
             github.rest.issues.addLabels({
@@ -67,22 +71,26 @@ jobs:
               repo: context.repo.repo,
               labels: ['success']
             })
-            const output = require('fs').readFileSync('output.sh', 'utf8')
-            github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'callback.yml',
-              ref: 'main',
-              inputs: {
-                success: true,
-                output: output,
-                input: '${{ github.event.issue.body }}'
-              }
-            })
-      # 6. 当以上步骤失败时，为 issues 添加 failure 标签，并为其添加失败原因评论
+            const fs = require('fs')
+            const output = fs.readFileSync('output.sh', 'utf8')
+            const fetch = require('node-fetch')
+            const payload = {
+              success: true,
+              output: output
+            }
+            const options = {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(payload)
+            }
+            fetch(url, options)
+
+      # 7. 当以上步骤失败时，为 issues 添加 failure 标签，并为其添加失败原因评论
       - name: Failure issues
         if: ${{ failure() }}
-        uses: actions/github-script@v6
+        uses: actions/github-script@v5
         with:
           script: |
             github.rest.issues.addLabels({
@@ -97,14 +105,16 @@ jobs:
               repo: context.repo.repo,
               body: "[构建失败，点击查看](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
             })
-            github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'callback.yml',
-              ref: 'main',
-              inputs: {
-                success: false,
-                output: '<a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">构建失败，点击查看</a>',
-                input: '${{ github.event.issue.body }}'
-              }
-            })
+            const fetch = require('node-fetch')
+            const payload = {
+              success: false,
+              output: '<a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">构建失败，点击查看</a>'
+            }
+            const options = {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(payload)
+            }
+            fetch(url, options)
