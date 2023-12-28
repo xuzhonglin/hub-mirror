@@ -71,21 +71,16 @@ jobs:
               repo: context.repo.repo,
               labels: ['success']
             })
-            const fs = require('fs')
-            const output = fs.readFileSync('output.sh', 'utf8')
-            const fetch = require('node-fetch')
-            const payload = {
-              success: true,
-              output: output
-            }
-            const options = {
-              method: 'POST',
+            const output = require('fs').readFileSync('output.sh', 'utf8')
+            github.request('POST ${{env.callbackUrl}}', {
               headers: {
                 'Content-Type': 'application/json'
               },
-              body: JSON.stringify(payload)
-            }
-            fetch(url, options)
+              body: JSON.stringify({
+                success: true,
+                output: output
+              })
+            })
 
       # 7. 当以上步骤失败时，为 issues 添加 failure 标签，并为其添加失败原因评论
       - name: Failure issues
@@ -105,16 +100,12 @@ jobs:
               repo: context.repo.repo,
               body: "[构建失败，点击查看](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
             })
-            const fetch = require('node-fetch')
-            const payload = {
-              success: false,
-              output: '<a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">构建失败，点击查看</a>'
-            }
-            const options = {
-              method: 'POST',
+            github.request('POST ${{env.callbackUrl}}', {
               headers: {
                 'Content-Type': 'application/json'
               },
-              body: JSON.stringify(payload)
-            }
-            fetch(url, options)
+              body: JSON.stringify({
+                success: false,
+                output: '<a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">构建失败，点击查看</a>'
+              })
+            })
