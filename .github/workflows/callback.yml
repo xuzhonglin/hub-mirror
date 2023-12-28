@@ -23,6 +23,7 @@ jobs:
           echo "callbackUrl=$(echo '${{ inputs.input }}' | jq -r '.callbackUrl')" >> $GITHUB_ENV
       # 发送callback
       - name: Send callback
+        if: ${{ env.callbackUrl != '' }}
         run: |
           curl -X POST -H "Content-Type: application/json" -d '{"success":${{ inputs.success }},"output":"${{ inputs.output }}"}' ${{ env.callbackUrl }}
       
